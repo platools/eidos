@@ -1,6 +1,6 @@
 {
   "name": "eidos",
-  "version": "0.5.5",
+  "version": "0.6.1",
   "private": true,
   "type": "module",
   "scripts": {
@@ -22,7 +22,7 @@
     "test": "vitest"
   },
   "dependencies": {
-    "@ai-sdk/openai": "^0.0.13",
+    "@ai-sdk/openai": "^0.0.45",
     "@aws-crypto/sha256-browser": "^5.2.0",
     "@eidos.space/types": "workspace:*",
     "@emoji-mart/data": "^1.1.2",
@@ -82,7 +82,7 @@
     "@uiw/react-heat-map": "^2.2.1",
     "@xenova/transformers": "^2.17.1",
     "ahooks": "^3.7.8",
-    "ai": "^3.1.9",
+    "ai": "^3.3.6",
     "aws-sdk": "^2.1526.0",
     "aws4fetch": "^1.0.17",
     "bufferutil": "^4.0.7",
@@ -95,6 +95,7 @@
     "eventemitter3": "^5.0.1",
     "gpt-tokenizer": "^2.1.1",
     "hnswlib-wasm": "^0.8.2",
+    "html2canvas": "^1.4.1",
     "idb-keyval": "^6.2.1",
     "immutability-helper": "^3.1.1",
     "jszip": "^3.10.1",
@@ -104,6 +105,7 @@
     "lucide-react": "^0.316.0",
     "marked": "^5.1.1",
     "match-sorter": "^6.3.1",
+    "mermaid": "^10.9.1",
     "mime-db": "^1.53.0",
     "monaco-editor": "^0.44.0",
     "moo": "^0.5.2",
@@ -193,6 +195,10 @@
     "vite-plugin-pwa": "^0.20.1",
     "vitest": "^2.0.3",
     "workbox-window": "^7.0.0"
+  },
+  "engines": {
+    "node": ">=18.0.0",
+    "pnpm": ">=8.5.0"
   },
   "pnpm": {
     "peerDependencyRules": {
