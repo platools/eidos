@@ -1,20 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react"
-import { LexicalComposer } from "@lexical/react/LexicalComposer"
 import { useLexicalComposerContext } from "@lexical/react/LexicalComposerContext"
-import { ContentEditable } from "@lexical/react/LexicalContentEditable"
-import LexicalErrorBoundary from "@lexical/react/LexicalErrorBoundary"
-import { HistoryPlugin } from "@lexical/react/LexicalHistoryPlugin"
-import { PlainTextPlugin } from "@lexical/react/LexicalPlainTextPlugin"
-import { TabIndentationPlugin } from "@lexical/react/LexicalTabIndentationPlugin"
 import html2canvas from "html2canvas"
-import {
-  $createParagraphNode,
-  $createTextNode,
-  $getNodeByKey,
-  $getRoot,
-  EditorState,
-  NodeKey,
-} from "lexical"
+import { $getNodeByKey, NodeKey } from "lexical"
 import { ChevronDown } from "lucide-react"
 import mermaid from "mermaid"
 import { useTheme } from "next-themes"
@@ -26,6 +13,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
+import { Textarea } from "@/components/ui/textarea"
 import { useToast } from "@/components/ui/use-toast"
 
 import { $isMermaidNode } from "./node"
@@ -34,9 +22,7 @@ export interface MermaidProps {
   text: string
   nodeKey: NodeKey
 }
-mermaid.initialize({
-  theme: "default",
-})
+
 export const Mermaid: React.FC<MermaidProps> = ({ text, nodeKey }) => {
   const [mermaidText, setMermaidText] = useState<string>(text)
   const [svg, setSvg] = useState<string>("")
@@ -45,26 +31,43 @@ export const Mermaid: React.FC<MermaidProps> = ({ text, nodeKey }) => {
   const { theme } = useTheme()
   const mermaidRef = useRef<HTMLDivElement>(null)
   const [open, setOpen] = useState(false)
+  const [isMermaidInitialized, setIsMermaidInitialized] = useState(false)
+  const textareaRef = useRef<HTMLTextAreaElement>(null)
 
   useEffect(() => {
-    setMermaidText(text)
-    mermaid.initialize({
-      theme: theme === "dark" ? "dark" : "default",
-    })
-    renderMermaid()
-  }, [text, theme])
+    const initializeMermaid = () => {
+      try {
+        mermaid.initialize({
+          startOnLoad: false,
+          theme: theme === "dark" ? "dark" : "default",
+        })
+      } catch (error) {
+        // Mermaid is already initialized, ignore the error
+      }
+      setIsMermaidInitialized(true)
+    }
 
-  const [editor] = useLexicalComposerContext()
+    initializeMermaid()
+  }, [theme])
+
   const toggleMode = () => {
-    setMode(mode === "preview" ? "edit" : "preview")
+    const newMode = mode === "preview" ? "edit" : "preview"
+    setMode(newMode)
   }
+
   useEffect(() => {
     mermaid.contentLoaded()
   }, [])
 
+  const [editor] = useLexicalComposerContext()
+
   const renderMermaid = useCallback(async () => {
+    if (!isMermaidInitialized) return
+
     try {
-      const mermaidId = `mermaid-${nodeKey}`
+      const mermaidId = `mermaid-${nodeKey}-${Math.random()
+        .toString(36)
+        .substr(2, 9)}`
       const isValid = await mermaid.parse(mermaidText)
       if (isValid) {
         editor.update(() => {
@@ -84,32 +87,32 @@ export const Mermaid: React.FC<MermaidProps> = ({ text, nodeKey }) => {
       setSvg("")
       setError("Invalid Mermaid text")
     }
-  }, [mermaidText, text])
+  }, [mermaidText, text, nodeKey, editor, isMermaidInitialized])
 
   useEffect(() => {
-    renderMermaid()
-  }, [mermaidText])
+    if (isMermaidInitialized) {
+      renderMermaid()
+    }
+  }, [renderMermaid, isMermaidInitialized])
 
   const { toast } = useToast()
 
-  const initialConfig = {
-    namespace: "MermaidEditor",
-    onError: (error: Error) => console.error(error),
-    nodes: [],
-    editorState: () => {
-      const root = $getRoot()
-      const paragraph = $createParagraphNode()
-      paragraph.append($createTextNode(mermaidText))
-      root.append(paragraph)
+  const handleTextChange = useCallback(
+    (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+      setMermaidText(e.target.value)
     },
-  }
+    []
+  )
 
-  const onChange = useCallback((editorState: EditorState) => {
-    editorState.read(() => {
-      const newText = editorState.read(() => $getRoot().getTextContent())
-      setMermaidText(newText)
-    })
-  }, [])
+  const handleKeyDown = useCallback(
+    (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+      e.stopPropagation()
+      if (e.key === "Escape") {
+        setMode("preview")
+      }
+    },
+    []
+  )
 
   const copyContent = useCallback(
     async (format: "png" | "svg" | "text") => {
@@ -144,10 +147,6 @@ export const Mermaid: React.FC<MermaidProps> = ({ text, nodeKey }) => {
     },
     [mermaidText]
   )
-
-  const handleEditorClick = useCallback((e: React.MouseEvent) => {
-    e.stopPropagation()
-  }, [])
 
   const ref = useRef<HTMLDivElement>(null)
 
@@ -184,24 +183,14 @@ export const Mermaid: React.FC<MermaidProps> = ({ text, nodeKey }) => {
         </DropdownMenu>
       </div>
       {mode === "edit" && (
-        <div onClick={handleEditorClick}>
-          <LexicalComposer initialConfig={initialConfig}>
-            <PlainTextPlugin
-              contentEditable={
-                <ContentEditable className="prose dark:prose-invert w-full p-2 h-full border-b outline-none" />
-              }
-              placeholder={
-                <div className="text-muted">
-                  Enter your Mermaid diagram code here...
-                </div>
-              }
-              ErrorBoundary={LexicalErrorBoundary}
-            />
-            <HistoryPlugin />
-            <OnChangePlugin onChange={onChange} />
-            <TabIndentationPlugin />
-          </LexicalComposer>
-        </div>
+        <Textarea
+          ref={textareaRef}
+          value={mermaidText}
+          onChange={handleTextChange}
+          onKeyDown={handleKeyDown}
+          rows={mermaidText.split("\n").length}
+          placeholder="Enter your Mermaid diagram code here..."
+        />
       )}
       {error && <div className="text-red-500">{error}</div>}
       <div
@@ -213,19 +202,4 @@ export const Mermaid: React.FC<MermaidProps> = ({ text, nodeKey }) => {
       />
     </div>
   )
-}
-
-// Add this custom plugin to handle onChange events
-function OnChangePlugin({
-  onChange,
-}: {
-  onChange: (editorState: EditorState) => void
-}) {
-  const [editor] = useLexicalComposerContext()
-  useEffect(() => {
-    return editor.registerUpdateListener(({ editorState }) => {
-      onChange(editorState)
-    })
-  }, [editor, onChange])
-  return null
 }

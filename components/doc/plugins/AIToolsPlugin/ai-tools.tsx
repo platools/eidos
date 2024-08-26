@@ -1,5 +1,5 @@
 import { useCallback, useMemo, useRef, useState } from "react"
-import { $convertFromMarkdownString } from "@lexical/markdown"
+import { $convertFromMarkdownString, Transformer } from "@lexical/markdown"
 import { useLexicalComposerContext } from "@lexical/react/LexicalComposerContext"
 import { useClickAway, useKeyPress } from "ahooks"
 import { useChat } from "ai/react"
@@ -8,7 +8,6 @@ import { ChevronRightIcon, PauseIcon, RefreshCcwIcon } from "lucide-react"
 
 import { uuidv7 } from "@/lib/utils"
 import { useAiConfig } from "@/hooks/use-ai-config"
-import { useCurrentPathInfo } from "@/hooks/use-current-pathinfo"
 import { Button } from "@/components/ui/button"
 import {
   Command,
@@ -69,14 +68,15 @@ export function AITools({
   const allBlocks = useAllDocBlocks()
   const __allTransformers = useMemo(() => {
     return [...extBlocks.map((block) => block.transform), ...allTransformers]
-  }, [extBlocks])
+  }, [extBlocks]) as Transformer[]
 
   const [isFinished, setIsFinished] = useState(true)
   const [customPrompt, setCustomPrompt] = useState<string>("")
   const [open, setOpen] = useState(true)
   const [actionOpen, setActionOpen] = useState(false)
   const [aiResult, setAiResult] = useState<string>("")
-  const { getConfigByModel, findFirstAvailableModel } = useAiConfig()
+  const { getConfigByModel, findFirstAvailableModel, findAvailableModel } =
+    useAiConfig()
   const { messages, setMessages, reload, isLoading, stop } = useChat({
     onFinish(message) {
       setAiResult(message.content)
@@ -313,7 +313,7 @@ be between <content-begin> and <content-end>. you just output the transformed co
             }}
           />
           <ScrollArea>
-            <CommandList>
+            <CommandList className="max-h-[20rem]">
               <CommandEmpty>No Prompt found.</CommandEmpty>
               <CommandGroup heading="Built-in Prompts" ref={commandGroupRef}>
                 {builtInPrompts.map((prompt) => {
@@ -355,10 +355,9 @@ be between <content-begin> and <content-end>. you just output the transformed co
                                     `{{${key}}}`,
                                     item
                                   )
-                                  console.log(renderedPrompt)
                                   runAction(
                                     renderedPrompt,
-                                    findFirstAvailableModel()
+                                    findAvailableModel(prompt.type)
                                   )
                                 }}
                               >
